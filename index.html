@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Noise Track</title>
+  <style>
+    #noise-level {
+      font-size: 48px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Noise Track</h1>
+  <p>Current noise level: <span id="noise-level">-</span> dB</p>
+  
+  <script>
+    function updateNoiseLevel(level) {
+      document.getElementById("noise-level").textContent = level.toFixed(2);
+    }
+  
+    // Function to track noise
+    function trackNoiseLevel() {
+      // Using getUserMedia API to access microphone
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const source = audioContext.createMediaStreamSource(stream);
+          
+          // Create a script processor node to process audio data
+          const scriptNode = audioContext.createScriptProcessor(4096, 1, 1);
+          scriptNode.onaudioprocess = function(event) {
+            // Get the audio data from the input buffer
+            const inputBuffer = event.inputBuffer.getChannelData(0);
+            
+            let sum = 0;
+            for (let i = 0; i < inputBuffer.length; i++) {
+              sum += inputBuffer[i] * inputBuffer[i];
+            }
+            const rms = Math.sqrt(sum / inputBuffer.length);
+            
+            // Convert the RMS to dB
+            const db = 20 * Math.log10(rms);
+            
+            // Update the noise level on the webpage
+            updateNoiseLevel(db);
+          };
+          
+
+          source.connect(scriptNode);
+          scriptNode.connect(audioContext.destination);
+        })
+        .catch(function(err) {
+          console.error("Error accessing microphone: ", err);
+        });
+    }
+    
+    // Start tracking the noise level when the page loads
+    window.addEventListener("load", trackNoiseLevel);
+  </script>
+</body>
+</html>
